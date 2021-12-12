@@ -1,11 +1,81 @@
+import json
 import pygame
 import math
 import random
 import datetime
 
 
-class Game:
+SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 1000
+FPS = 60
+
+
+pygame.init()
+pygame.font.init()
+clock = pygame.time.Clock()
+pygame.display.set_caption("Invaders")
+screen = pygame.display.set_mode([1000, 1000])
+
+f_fifty = pygame.font.Font(None, 50)
+f_thirty = pygame.font.Font(None, 30)
+f_twenty = pygame.font.Font(None, 20)
+f_ten = pygame.font.Font(None, 10)
+
+pygame.mouse.set_cursor((8, 8), (0, 0), (0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0))
+
+
+class App:
     def __init__(self):
+        self.menu = None
+        self.game = None
+        self.menu_running = False
+        self.game_running = False
+        self.fnc_app_menu()
+
+    def fnc_app_menu(self):
+        self.menu = Menu(self)
+        self.game_running = False
+
+    def fnc_app_game(self):
+        self.game = Game(self)
+        self.menu_running = False
+
+    def fnc_app_update(self):
+        screen.blit(img_player_cross, (mouse_pos[0] - 16, mouse_pos[1] - 16))
+        print(self.menu_running, self.game_running)
+        if self.menu_running:
+            self.menu.fnc_menu_update()
+        if self.game_running:
+            self.game.fnc_update()
+
+
+def fnc_read_user_data():
+    try:
+        with open('data/user_data/user_data.json', mode='r', encoding='utf-8') as file:
+            data = json.load(file)
+    except Exception as error:
+        return f"Something went wrong with opening user data file: {error}"
+    finally:
+        file.close()
+    return data
+
+
+class Menu:
+    def __init__(self, parent):
+        parent.menu_running = True
+        self.user_data = fnc_read_user_data()
+        self.btn_start_level_t = f_fifty.render("START GAME", True, (255, 255, 255))
+        self.btn_start_level_b = self.btn_start_level_t.get_rect(topleft=(200, 200))
+
+    def fnc_menu_update(self):
+        self.btn_start_level_t = f_fifty.render("START GAME", True, (255, 255, 255))
+        self.btn_start_level_b = self.btn_start_level_t.get_rect(topleft=(200, 200))
+        screen.blit(self.btn_start_level_t, self.btn_start_level_b)
+
+
+class Game:
+    def __init__(self, parent):
+        parent.game_running = True
         self.started = False
         self.player = Player()
         self.enemies = [Bomb()]
@@ -13,11 +83,12 @@ class Game:
         self.delay = 3000
 
     def fnc_update(self):
+        print("Game update")
         self.player.fnc_update()
         self.fnc_draw()
         if datetime.datetime.now().timestamp() >= self.timer + self.delay / 1000:
             self.timer = datetime.datetime.now().timestamp()
-            if self.delay > self.player.reload:
+            if self.delay > 2000:
                 self.delay -= 10
             self.fnc_create_enemy()
             print(self.delay)
@@ -63,8 +134,8 @@ class Game:
         pygame.draw.rect(screen, (0, 255, 0), (450, 920, ((pygame.time.get_ticks() - self.player.reload) / 20) if self.player.reload + 2000 > pygame.time.get_ticks() else 100, 5))
         pygame.draw.rect(screen, (255, 0, 0), (200, 980, 600, 10))
         pygame.draw.rect(screen, (0, 255, 0), (200, 980, self.player.health * 6, 10))
-        screen.blit(f_score.render(f'Score: {self.player.score}', True, (200, 200, 200)), (0, 0))
-        screen.blit(f_health.render(f'Health: {self.player.health}%', True, (20, 20, 20)), (450, 978))
+        screen.blit(f_fifty.render(f'Score: {self.player.score}', True, (200, 200, 200)), (0, 0))
+        screen.blit(f_twenty.render(f'Health: {self.player.health}%', True, (20, 20, 20)), (450, 978))
 
 
 class Player:
@@ -121,7 +192,8 @@ class Shell:
         if (self.timer + 1500) > (pygame.time.get_ticks()):
             self.fnc_move()
         else:
-            del game.player.shells[0]
+            del app.game.player.shells[0]
+
 
     def fnc_move(self):
         self.position = [self.position[0] - self.force * math.cos(math.radians(self.rotation)), self.position[1] - self.force * math.sin(math.radians(self.rotation))]
@@ -147,32 +219,20 @@ def fnc_collision(shell, bomb):
         return True
 
 
-pygame.init()
-pygame.font.init()
-game = Game()
-pygame.display.set_caption("Invaders")
-screen = pygame.display.set_mode([1000, 1000])
-
-clock = pygame.time.Clock()
-f_score = pygame.font.Font(None, 30)
-f_health = pygame.font.Font(None, 20)
-f_reload = pygame.font.Font(None, 10)
-pygame.mouse.set_cursor((8, 8), (0, 0), (0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0))
-
-img_player_cannon = pygame.image.load('media/images/player/cannon2.png')
-img_player_turret_bg = pygame.image.load('media/images/player/turret_bg.png')
-img_player_turret_fg = pygame.image.load('media/images/player/turret_fg.png')
-img_player_char_harry = pygame.image.load('media/images/player/col_harry.png')
-img_player_char_george = pygame.image.load('media/images/player/cpt_george.png')
-img_player_char_charles = pygame.image.load('media/images/player/lt_charles.png')
-img_player_cross = pygame.image.load('media/images/player/cross.png')
-img_enemy_bomb = pygame.image.load('media/images/enemy/bomb.png')
-
-running = True
+img_player_cannon = pygame.image.load('data/media/images/player/cannon.png')
+img_player_turret_bg = pygame.image.load('data/media/images/player/turret_bg.png')
+img_player_turret_fg = pygame.image.load('data/media/images/player/turret_fg.png')
+img_player_char_harry = pygame.image.load('data/media/images/player/col_harry.png')
+img_player_char_george = pygame.image.load('data/media/images/player/cpt_george.png')
+img_player_char_charles = pygame.image.load('data/media/images/player/lt_charles.png')
+img_player_cross = pygame.image.load('data/media/images/player/cross.png')
+img_enemy_bomb = pygame.image.load('data/media/images/enemy/bomb.png')
 
 start_time = datetime.datetime.now().timestamp()
 
-while running:
+app = App()
+
+while True:
 
     mouse_pos = list(pygame.mouse.get_pos())
 
@@ -180,13 +240,34 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.MOUSEBUTTONDOWN:
-            game.player.fnc_shoot()
+            if event.button == 1:
+                if app.menu_running and app.menu.btn_start_level_b.collidepoint(event.pos):
+                    app.fnc_app_game()
+                if app.game_running:
+                    app.game.player.fnc_shoot()
 
     screen.fill((20, 20, 20))
 
-    game.fnc_update()
+    app.fnc_app_update()
 
     pygame.display.flip()
-    clock.tick(144)
+    clock.tick(FPS)
 
 pygame.quit()
+
+
+
+
+
+
+
+
+
+
+
+
+"""
+
+
+
+"""
