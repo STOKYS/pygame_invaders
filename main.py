@@ -13,6 +13,7 @@ pygame.font.init()
 clock = pygame.time.Clock()
 pygame.display.set_caption("Invaders")
 screen = pygame.display.set_mode([1000, 1000])
+pygame.display.set_icon(pygame.image.load('data/media/images/icon.jpg'))
 
 f_fifty = pygame.font.Font(None, 50)
 f_forty = pygame.font.Font(None, 40)
@@ -52,23 +53,26 @@ class App:
         self.menu_running = False
 
     def fnc_app_update(self):
-        screen.blit(img_player_cross, (mouse_pos[0] - 16, mouse_pos[1] - 16))
         if self.menu_running:
             self.menu.fnc_menu_update()
         if self.game_running:
             self.game.fnc_game_update()
+        screen.blit(img_player_cross, (mouse_pos[0] - 16, mouse_pos[1] - 16))
 
 
 class Menu:
     def __init__(self, parent):
         parent.menu_running = True
         self.user_data = fnc_read_user_data()
-        self.btn_start_level_t, self.btn_start_level_b = (None, )*2
+        self.btn_start_level_one_b, self.btn_start_level_two_b, self.btn_start_level_thr_b, self.btn_start_level_fou_b, self.btn_start_level_fiv_b, self.btn_start_level_six_b = (None, )*6
 
     def fnc_menu_update(self):
-        self.btn_start_level_t = f_fifty.render("START GAME", True, (255, 255, 255))
-        self.btn_start_level_b = self.btn_start_level_t.get_rect(center=(SCREEN_WIDTH/2, SCREEN_HEIGHT/2))
-        screen.blit(self.btn_start_level_t, self.btn_start_level_b)
+        self.btn_start_level_one_b = pygame.draw.rect(screen, (0, 255, 0), (0, 0, SCREEN_WIDTH/3, SCREEN_HEIGHT/2))
+        self.btn_start_level_two_b = pygame.draw.rect(screen, (50, 200, 0), (SCREEN_WIDTH / 3, 0, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
+        self.btn_start_level_thr_b = pygame.draw.rect(screen, (100, 150, 0), (SCREEN_WIDTH / 3 * 2, 0, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
+        self.btn_start_level_fou_b = pygame.draw.rect(screen, (150, 100, 0), (0, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
+        self.btn_start_level_fiv_b = pygame.draw.rect(screen, (200, 50, 0), (SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
+        self.btn_start_level_six_b = pygame.draw.rect(screen, (255, 0, 0), (SCREEN_WIDTH / 3 * 2, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
 
 
 class Game:
@@ -179,7 +183,7 @@ class Player:
             self.rotation = (deg - 90)
 
     def fnc_player_shoot(self):
-        if self.reload + 2000 < pygame.time.get_ticks():
+        if self.reload + 20 < pygame.time.get_ticks():
             self.reload = pygame.time.get_ticks()
             self.shells.append(Shell(self.position, self.rotation, 20))
 
@@ -247,7 +251,7 @@ while app.running:
             running = False
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                if app.menu_running and app.menu.btn_start_level_b.collidepoint(event.pos):
+                if app.menu_running and app.menu.btn_start_level_one_b.collidepoint(event.pos):
                     app.fnc_app_game()
                 if app.game_running:
                     app.game.player.fnc_player_shoot()
