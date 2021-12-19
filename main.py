@@ -21,13 +21,24 @@ f_thirty = pygame.font.Font(None, 30)
 f_twenty = pygame.font.Font(None, 20)
 f_ten = pygame.font.Font(None, 10)
 
-pygame.mouse.set_cursor((8, 8), (0, 0), (0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0))
 
-
-def fnc_read_user_data():
+def fnc_read_user_data(encoding='utf-8'):
     try:
-        with open('data/user_data/user_data.json', mode='r', encoding='utf-8') as file:
+        with open('data/user_data/user_data.json', mode='r', encoding=encoding) as file:
             data = json.load(file)
+    except Exception as error:
+        return f"Something went wrong with opening user data file: {error}"
+    finally:
+        file.close()
+    return data
+
+
+def fnc_write_user_data(level, score, encoding='utf-8'):
+    data = fnc_read_user_data()
+    data[f"level{level}"] = score
+    try:
+        with open('data/user_data/user_data.json', mode='w', encoding=encoding) as file:
+            json.dump(data, file, indent=4)
     except Exception as error:
         return f"Something went wrong with opening user data file: {error}"
     finally:
@@ -45,11 +56,13 @@ class App:
         self.fnc_app_menu()
 
     def fnc_app_menu(self):
+        pygame.mouse.set_visible(True)
         self.menu = Menu(self)
         self.game_running = False
 
-    def fnc_app_game(self):
-        self.game = Game(self)
+    def fnc_app_game(self, level):
+        pygame.mouse.set_visible(False)
+        self.game = Game(self, level)
         self.menu_running = False
 
     def fnc_app_update(self):
@@ -57,7 +70,6 @@ class App:
             self.menu.fnc_menu_update()
         if self.game_running:
             self.game.fnc_game_update()
-        screen.blit(img_player_cross, (mouse_pos[0] - 16, mouse_pos[1] - 16))
 
 
 class Menu:
@@ -67,7 +79,7 @@ class Menu:
         self.btn_start_level_one_b, self.btn_start_level_two_b, self.btn_start_level_thr_b, self.btn_start_level_fou_b, self.btn_start_level_fiv_b, self.btn_start_level_six_b = (None, )*6
 
     def fnc_menu_update(self):
-        self.btn_start_level_one_b = pygame.draw.rect(screen, (0, 255, 0), (0, 0, SCREEN_WIDTH/3, SCREEN_HEIGHT/2))
+        self.btn_start_level_one_b = pygame.draw.rect(screen, (0, 255, 0),  (0, 0, SCREEN_WIDTH/3, SCREEN_HEIGHT/2))
         self.btn_start_level_two_b = pygame.draw.rect(screen, (50, 200, 0), (SCREEN_WIDTH / 3, 0, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
         self.btn_start_level_thr_b = pygame.draw.rect(screen, (100, 150, 0), (SCREEN_WIDTH / 3 * 2, 0, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
         self.btn_start_level_fou_b = pygame.draw.rect(screen, (150, 100, 0), (0, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
@@ -76,21 +88,24 @@ class Menu:
 
 
 class Game:
-    def __init__(self, parent):
+    def __init__(self, parent, level):
         parent.game_running = True
         self.started = False
         self.player = Player()
         self.enemies = [Bomb()]
         self.timer = datetime.datetime.now().timestamp()
-        self.delay = 3000
+        self.delay = [4000, 3500, 3000, 2500, 2500, 2000]
+        self.delay_s = [2500, 2000, 2000, 2000, 1500, 1500]
+        self.delay_ch = [20, 20, 20, 20, 15, 15]
+        self.level = level
 
     def fnc_game_update(self):
         self.player.fnc_player_update()
         self.fnc_game_draw()
-        if datetime.datetime.now().timestamp() >= self.timer + self.delay / 1000:
+        if datetime.datetime.now().timestamp() >= self.timer + self.delay[self.level-1] / 1000:
             self.timer = datetime.datetime.now().timestamp()
-            if self.delay > 2000:
-                self.delay -= 10
+            if self.delay[self.level-1] > self.delay_s[self.level-1]:
+                self.delay[self.level-1] -= self.delay_ch[self.level-1]
             self.fnc_game_create_enemy()
 
     def fnc_game_create_enemy(self):
@@ -104,6 +119,8 @@ class Game:
         screen.blit(__btn_lost_t, __btn_lost_b)
         screen.blit(__btn_score_t, __btn_score_b)
         pygame.display.update((__btn_lost_b, __btn_score_b))
+        if self.player.score > self.player.userdata.get(f"level{self.level}"):
+            fnc_write_user_data(self.level, self.player.score)
         pygame.time.wait(5000)
         app.fnc_app_menu()
 
@@ -145,7 +162,9 @@ class Game:
         pygame.draw.rect(screen, (255, 0, 0), (200, 980, 600, 10))
         pygame.draw.rect(screen, (0, 255, 0), (200, 980, self.player.health * 6, 10))
         screen.blit(f_thirty.render(f'Score: {self.player.score}', True, (200, 200, 200)), (0, 0))
+        screen.blit(f_thirty.render(f'H-Score: {self.player.userdata.get(f"level{self.level}")}', True, (200, 200, 200)), (0, 20))
         screen.blit(f_twenty.render(f'Health: {self.player.health}%', True, (20, 20, 20)), (450, 978))
+        screen.blit(img_player_cross, (mouse_pos[0] - 16, mouse_pos[1] - 16))
 
 
 class Player:
@@ -154,8 +173,12 @@ class Player:
         self.rotation = 0
         self.shells = []
         self.reload = pygame.time.get_ticks()
+        self.reload_time = 2000
+        self.reload_streak_multip = 20
+        self.reload_streak = 0
         self.score = 0
         self.health = 100
+        self.userdata = fnc_read_user_data()
 
     def fnc_player_update(self):
         if self.health <= 0:
@@ -183,7 +206,15 @@ class Player:
             self.rotation = (deg - 90)
 
     def fnc_player_shoot(self):
-        if self.reload + 20 < pygame.time.get_ticks():
+        """
+        !!!IDEA!!!
+        When you hit something you can immediately shoot again but when you miss you have to wait 2 seconds
+
+        OR
+
+        When you hit you reduce the reload time by /2 until like /16 and it resets when you miss //I like this idea more
+        """
+        if self.reload + 2000 < pygame.time.get_ticks():
             self.reload = pygame.time.get_ticks()
             self.shells.append(Shell(self.position, self.rotation, 20))
 
@@ -251,13 +282,29 @@ while app.running:
             running = False
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                if app.menu_running and app.menu.btn_start_level_one_b.collidepoint(event.pos):
-                    app.fnc_app_game()
+                if app.menu_running:
+                    if app.menu.btn_start_level_one_b.collidepoint(event.pos):
+                        app.fnc_app_game(1)
+                    elif app.menu.btn_start_level_two_b.collidepoint(event.pos):
+                        app.fnc_app_game(2)
+                    elif app.menu.btn_start_level_thr_b.collidepoint(event.pos):
+                        app.fnc_app_game(3)
+                    elif app.menu.btn_start_level_fou_b.collidepoint(event.pos):
+                        app.fnc_app_game(4)
+                    elif app.menu.btn_start_level_fiv_b.collidepoint(event.pos):
+                        app.fnc_app_game(5)
+                    elif app.menu.btn_start_level_six_b.collidepoint(event.pos):
+                        app.fnc_app_game(6)
                 if app.game_running:
                     app.game.player.fnc_player_shoot()
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                app.running = False
+                if app.game_running:
+                    if app.game.player.score > app.game.player.userdata.get(f"level{app.game.level}"):
+                        fnc_write_user_data(app.game.level, app.game.player.score)
+                    app.fnc_app_menu()
+                elif app.menu_running:
+                    app.running = False
 
     screen.fill((20, 20, 20))
 
@@ -266,4 +313,4 @@ while app.running:
     pygame.display.flip()
     clock.tick(FPS)
 
-pygame.quits()
+pygame.quit()
