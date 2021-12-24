@@ -95,13 +95,14 @@ class Game:
         self.enemies = [Bomb()]
         self.timer = datetime.datetime.now().timestamp()
         self.delay = [4000, 3500, 3000, 2500, 2500, 2000]
-        self.delay_s = [2500, 2000, 2000, 2000, 1500, 1500]
+        self.delay_s = [2500, 2000, 2000, 2000, 1500, 1000]
         self.delay_ch = [20, 20, 20, 20, 15, 15]
         self.level = level
 
     def fnc_game_update(self):
         self.player.fnc_player_update()
         self.fnc_game_draw()
+        self.fnc_game_gui()
         if datetime.datetime.now().timestamp() >= self.timer + self.delay[self.level-1] / 1000:
             self.timer = datetime.datetime.now().timestamp()
             if self.delay[self.level-1] > self.delay_s[self.level-1]:
@@ -140,6 +141,8 @@ class Game:
             for j in range(len(self.enemies)):
                 if self.enemies[j].position[1] >= 960:
                     buffer.append(j)
+                    if self.player.reload_streak > 0:
+                        self.player.reload_streak -= 1
                 self.enemies[j].fnc_bomb_update()
                 screen.blit(img_enemy_bomb, self.enemies[j].position)
             for i in range(len(buffer)):
@@ -151,19 +154,27 @@ class Game:
             for i in range(len(self.player.shells)):
                 for j in range(len(self.enemies)):
                     if fnc_collision(self.player.shells[i].position, self.enemies[j].position):
+                        self.player.reload_streak += 1
                         shell_buffer.append(i)
                         bomb_buffer.append(j)
                         self.player.score += 10
             for i in range(len(shell_buffer)):
                 del self.player.shells[shell_buffer[i]]
                 del self.enemies[bomb_buffer[i]]
+
+    def fnc_game_gui(self):
         pygame.draw.rect(screen, (255, 0, 0), (450, 920, 100, 5))
-        pygame.draw.rect(screen, (0, 255, 0), (450, 920, ((pygame.time.get_ticks() - self.player.reload) / 20) if self.player.reload + 2000 > pygame.time.get_ticks() else 100, 5))
+        __time_elapsed = (datetime.datetime.now().timestamp() - self.player.reload)
+        __time_reload_t = ((self.player.reload_time - (self.player.reload_streak * self.player.reload_streak_multip)) / 1000)
+        __time_reload = (100 / __time_reload_t)
+        pygame.draw.rect(screen, (0, 255, 0), (450, 920, 100, 5) if __time_reload * __time_elapsed > 100 else (450, 920, __time_elapsed * __time_reload, 5))
         pygame.draw.rect(screen, (255, 0, 0), (200, 980, 600, 10))
         pygame.draw.rect(screen, (0, 255, 0), (200, 980, self.player.health * 6, 10))
         screen.blit(f_thirty.render(f'Score: {self.player.score}', True, (200, 200, 200)), (0, 0))
-        screen.blit(f_thirty.render(f'H-Score: {self.player.userdata.get(f"level{self.level}")}', True, (200, 200, 200)), (0, 20))
+        screen.blit(f_twenty.render(f'H-Score: {self.player.userdata.get(f"level{self.level}")}', True, (200, 200, 200)),(0, 20))
         screen.blit(f_twenty.render(f'Health: {self.player.health}%', True, (20, 20, 20)), (450, 978))
+        screen.blit(f_thirty.render(f'Streak: {self.player.reload_streak}', True, (200, 200, 200)), (850, 0))
+        screen.blit(f_twenty.render(f'Reload time: {__time_reload_t}s', True, (200, 200, 200)), (850, 20))
         screen.blit(img_player_cross, (mouse_pos[0] - 16, mouse_pos[1] - 16))
 
 
@@ -172,9 +183,9 @@ class Player:
         self.position = [500, 855]
         self.rotation = 0
         self.shells = []
-        self.reload = pygame.time.get_ticks()
-        self.reload_time = 2000
-        self.reload_streak_multip = 20
+        self.reload = datetime.datetime.now().timestamp()
+        self.reload_time = 2500
+        self.reload_streak_multip = 50
         self.reload_streak = 0
         self.score = 0
         self.health = 100
@@ -206,16 +217,9 @@ class Player:
             self.rotation = (deg - 90)
 
     def fnc_player_shoot(self):
-        """
-        !!!IDEA!!!
-        When you hit something you can immediately shoot again but when you miss you have to wait 2 seconds
-
-        OR
-
-        When you hit you reduce the reload time by /2 until like /16 and it resets when you miss //I like this idea more
-        """
-        if self.reload + 2000 < pygame.time.get_ticks():
-            self.reload = pygame.time.get_ticks()
+        if datetime.datetime.now().timestamp() >= self.reload + ((self.reload_time - (self.reload_streak * self.reload_streak_multip)) / 1000):
+            print((self.reload_time - (self.reload_streak * self.reload_streak_multip)) / 1000)
+            self.reload = datetime.datetime.now().timestamp()
             self.shells.append(Shell(self.position, self.rotation, 20))
 
 
@@ -234,6 +238,7 @@ class Shell:
         if (self.timer + 1500) > (pygame.time.get_ticks()):
             self.fnc_shell_move()
         else:
+            app.game.player.reload_streak = 0
             del app.game.player.shells[0]
 
     def fnc_shell_move(self):
