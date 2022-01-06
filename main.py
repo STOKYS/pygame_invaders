@@ -85,6 +85,7 @@ class Menu:
         self.btn_start_level_fou_b = pygame.draw.rect(screen, (150, 100, 0), (0, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
         self.btn_start_level_fiv_b = pygame.draw.rect(screen, (200, 50, 0), (SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
         self.btn_start_level_six_b = pygame.draw.rect(screen, (255, 0, 0), (SCREEN_WIDTH / 3 * 2, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
+        screen.blit(img_mm_bg, (0, 0))
 
 
 class Game:
@@ -141,6 +142,7 @@ class Game:
             for j in range(len(self.enemies)):
                 if self.enemies[j].position[1] >= 960:
                     buffer.append(j)
+                    screen.blit(img_explosion, self.enemies[j].position)
                     if self.player.reload_streak > 0:
                         self.player.reload_streak -= 1
                 self.enemies[j].fnc_bomb_update()
@@ -155,6 +157,7 @@ class Game:
                 for j in range(len(self.enemies)):
                     if fnc_collision(self.player.shells[i].position, self.enemies[j].position):
                         self.player.reload_streak += 1
+                        screen.blit(img_explosion, self.enemies[j].position)
                         shell_buffer.append(i)
                         bomb_buffer.append(j)
                         self.player.score += 10
@@ -163,13 +166,16 @@ class Game:
                 del self.enemies[bomb_buffer[i]]
 
     def fnc_game_gui(self):
-        pygame.draw.rect(screen, (255, 0, 0), (450, 920, 100, 5))
+
         __time_elapsed = (datetime.datetime.now().timestamp() - self.player.reload)
         __time_reload_t = ((self.player.reload_time - (self.player.reload_streak * self.player.reload_streak_multip)) / 1000)
         __time_reload = (100 / __time_reload_t)
-        pygame.draw.rect(screen, (0, 255, 0), (450, 920, 100, 5) if __time_reload * __time_elapsed > 100 else (450, 920, __time_elapsed * __time_reload, 5))
         pygame.draw.rect(screen, (255, 0, 0), (200, 980, 600, 10))
         pygame.draw.rect(screen, (0, 255, 0), (200, 980, self.player.health * 6, 10))
+        if __time_reload_t - __time_elapsed > 0:
+            pygame.draw.rect(screen, (255, 0, 0), (mouse_pos[0] + 10, mouse_pos[1] + 25, 20, 5))
+            pygame.draw.rect(screen, (0, 255, 0), (mouse_pos[0] + 10, mouse_pos[1] + 25, 20, 5) if __time_reload * __time_elapsed > 100 else (mouse_pos[0] + 10, mouse_pos[1] + 25, __time_elapsed * __time_reload / 5, 5))
+            screen.blit(f_twenty.render(f'{round(__time_reload_t - __time_elapsed, 1)}s', True, (150, 150, 150)), (mouse_pos[0] + 10, mouse_pos[1] + 10))
         screen.blit(f_thirty.render(f'Score: {self.player.score}', True, (200, 200, 200)), (0, 0))
         screen.blit(f_twenty.render(f'H-Score: {self.player.userdata.get(f"level{self.level}")}', True, (200, 200, 200)),(0, 20))
         screen.blit(f_twenty.render(f'Health: {self.player.health}%', True, (20, 20, 20)), (450, 978))
@@ -273,6 +279,8 @@ img_player_char_george = pygame.image.load('data/media/images/player/cpt_george.
 img_player_char_charles = pygame.image.load('data/media/images/player/lt_charles.png')
 img_player_cross = pygame.image.load('data/media/images/player/cross.png')
 img_enemy_bomb = pygame.image.load('data/media/images/enemy/bomb.png')
+img_mm_bg = pygame.image.load('data/media/images/mm_bg.jpg')
+img_explosion = pygame.image.load('data/media/images/explosion.png')
 
 start_time = datetime.datetime.now().timestamp()
 
