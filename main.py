@@ -1,49 +1,22 @@
-import json
-import pygame
 import math
 import random
+
+import pygame
 import datetime
 
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 1000
-FPS = 60
+from enemy import Bomb
 
 pygame.init()
 pygame.font.init()
 clock = pygame.time.Clock()
 pygame.display.set_caption("Invaders")
-screen = pygame.display.set_mode([1000, 1000])
 pygame.display.set_icon(pygame.image.load('data/media/images/icon.jpg'))
 
-f_fifty = pygame.font.Font(None, 50)
-f_forty = pygame.font.Font(None, 40)
-f_thirty = pygame.font.Font(None, 30)
-f_twenty = pygame.font.Font(None, 20)
-f_ten = pygame.font.Font(None, 10)
-
-
-def fnc_read_user_data(encoding='utf-8'):
-    try:
-        with open('data/user_data/user_data.json', mode='r', encoding=encoding) as file:
-            data = json.load(file)
-    except Exception as error:
-        return f"Something went wrong with opening user data file: {error}"
-    finally:
-        file.close()
-    return data
-
-
-def fnc_write_user_data(level, score, encoding='utf-8'):
-    data = fnc_read_user_data()
-    data[f"level{level}"] = score
-    try:
-        with open('data/user_data/user_data.json', mode='w', encoding=encoding) as file:
-            json.dump(data, file, indent=4)
-    except Exception as error:
-        return f"Something went wrong with opening user data file: {error}"
-    finally:
-        file.close()
-    return data
+from menu import Menu
+from utils import screen, FPS, fnc_write_user_data, f_fifty, SCREEN_WIDTH, SCREEN_HEIGHT, f_forty, img_player_turret_bg, \
+    img_player_char_charles, img_player_char_george, img_player_turret_fg, img_player_char_harry, img_explosion, \
+    img_enemy_nbomb, img_enemy_bigbomb, img_enemy_bomb, fnc_collision, f_twenty, f_thirty, img_player_cross, \
+    fnc_read_user_data, img_player_cannon
 
 
 class App:
@@ -72,33 +45,19 @@ class App:
             self.game.fnc_game_update()
 
 
-class Menu:
-    def __init__(self, parent):
-        parent.menu_running = True
-        self.user_data = fnc_read_user_data()
-        self.btn_start_level_one_b, self.btn_start_level_two_b, self.btn_start_level_thr_b, self.btn_start_level_fou_b, self.btn_start_level_fiv_b, self.btn_start_level_six_b = (None, )*6
-
-    def fnc_menu_update(self):
-        self.btn_start_level_one_b = pygame.draw.rect(screen, (0, 255, 0),  (0, 0, SCREEN_WIDTH/3, SCREEN_HEIGHT/2))
-        self.btn_start_level_two_b = pygame.draw.rect(screen, (50, 200, 0), (SCREEN_WIDTH / 3, 0, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
-        self.btn_start_level_thr_b = pygame.draw.rect(screen, (100, 150, 0), (SCREEN_WIDTH / 3 * 2, 0, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
-        self.btn_start_level_fou_b = pygame.draw.rect(screen, (150, 100, 0), (0, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
-        self.btn_start_level_fiv_b = pygame.draw.rect(screen, (200, 50, 0), (SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
-        self.btn_start_level_six_b = pygame.draw.rect(screen, (255, 0, 0), (SCREEN_WIDTH / 3 * 2, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 3, SCREEN_HEIGHT / 2))
-        screen.blit(img_mm_bg, (0, 0))
-
-
 class Game:
     def __init__(self, parent, level):
         parent.game_running = True
         self.started = False
         self.player = Player()
-        self.enemies = [Bomb()]
+        self.enemies = [Bomb(0, 1, 1)]
         self.timer = datetime.datetime.now().timestamp()
         self.delay = [4000, 3500, 3000, 2500, 2500, 2000]
         self.delay_s = [2500, 2000, 2000, 2000, 1500, 1000]
         self.delay_ch = [20, 20, 20, 20, 15, 15]
+        self.rand = [100, 80, 50, 30, 15, 5]
         self.level = level
+        pygame.display.set_caption(f"Invaders - level: {level}")
 
     def fnc_game_update(self):
         self.player.fnc_player_update()
@@ -111,7 +70,13 @@ class Game:
             self.fnc_game_create_enemy()
 
     def fnc_game_create_enemy(self):
-        self.enemies.append(Bomb())
+        __random_e = random.randint(1, self.rand[self.level-1])
+        if __random_e == 1:
+            self.enemies.append(Bomb(1, 1, 5))
+        elif __random_e == 2:
+            self.enemies.append(Bomb(2, 1, 3))
+        else:
+            self.enemies.append(Bomb(0, 1, 1))
 
     def fnc_game_lost(self):
         __btn_lost_t = f_fifty.render("YOU LOST!", True, (200, 0, 0))
@@ -142,13 +107,18 @@ class Game:
             for j in range(len(self.enemies)):
                 if self.enemies[j].position[1] >= 960:
                     buffer.append(j)
+                    self.player.health -= self.enemies[j].damage
                     screen.blit(img_explosion, self.enemies[j].position)
                     if self.player.reload_streak > 0:
                         self.player.reload_streak -= 1
                 self.enemies[j].fnc_bomb_update()
-                screen.blit(img_enemy_bomb, self.enemies[j].position)
+                if self.enemies[j].type == 1:
+                    screen.blit(img_enemy_nbomb, self.enemies[j].position)
+                elif self.enemies[j].type == 2:
+                    screen.blit(img_enemy_bigbomb, self.enemies[j].position)
+                else:
+                    screen.blit(img_enemy_bomb, self.enemies[j].position)
             for i in range(len(buffer)):
-                self.player.health -= 1
                 del self.enemies[buffer[i]]
         if self.enemies and self.player.shells:
             shell_buffer = []
@@ -159,14 +129,17 @@ class Game:
                         self.player.reload_streak += 1
                         screen.blit(img_explosion, self.enemies[j].position)
                         shell_buffer.append(i)
-                        bomb_buffer.append(j)
-                        self.player.score += 10
+                        if self.enemies[j].health == 1:
+                            bomb_buffer.append(j)
+                        else:
+                            self.enemies[j].health -= 1
+                        self.player.score += 10 * self.enemies[j].damage
             for i in range(len(shell_buffer)):
                 del self.player.shells[shell_buffer[i]]
+            for i in range(len(bomb_buffer)):
                 del self.enemies[bomb_buffer[i]]
 
     def fnc_game_gui(self):
-
         __time_elapsed = (datetime.datetime.now().timestamp() - self.player.reload)
         __time_reload_t = ((self.player.reload_time - (self.player.reload_streak * self.player.reload_streak_multip)) / 1000)
         __time_reload = (100 / __time_reload_t)
@@ -177,7 +150,8 @@ class Game:
             pygame.draw.rect(screen, (0, 255, 0), (mouse_pos[0] + 10, mouse_pos[1] + 25, 20, 5) if __time_reload * __time_elapsed > 100 else (mouse_pos[0] + 10, mouse_pos[1] + 25, __time_elapsed * __time_reload / 5, 5))
             screen.blit(f_twenty.render(f'{round(__time_reload_t - __time_elapsed, 1)}s', True, (150, 150, 150)), (mouse_pos[0] + 10, mouse_pos[1] + 10))
         screen.blit(f_thirty.render(f'Score: {self.player.score}', True, (200, 200, 200)), (0, 0))
-        screen.blit(f_twenty.render(f'H-Score: {self.player.userdata.get(f"level{self.level}")}', True, (200, 200, 200)),(0, 20))
+        screen.blit(
+            f_twenty.render(f'H-Score: {self.player.userdata.get(f"level{self.level}")}', True, (200, 200, 200)), (0, 20))
         screen.blit(f_twenty.render(f'Health: {self.player.health}%', True, (20, 20, 20)), (450, 978))
         screen.blit(f_thirty.render(f'Streak: {self.player.reload_streak}', True, (200, 200, 200)), (850, 0))
         screen.blit(f_twenty.render(f'Reload time: {__time_reload_t}s', True, (200, 200, 200)), (850, 20))
@@ -250,37 +224,6 @@ class Shell:
     def fnc_shell_move(self):
         self.position = [self.position[0] - self.force * math.cos(math.radians(self.rotation)), self.position[1] - self.force * math.sin(math.radians(self.rotation))]
 
-
-class Bomb:
-    def __init__(self):
-        self.position = [random.randrange(900) + 50, -50]
-
-    def fnc_bomb_update(self):
-        self.fnc_bomb_move()
-
-    def fnc_bomb_move(self):
-        self.position = [self.position[0], self.position[1] + 3]
-
-
-def fnc_collision(shell, bomb):
-    __bomb_xy = [bomb[0], bomb[0] + 18, bomb[1], bomb[1] + 40]
-    __shell_xy = [shell[0] - 5, shell[0] + 5, shell[1] - 5, shell[1] + 5]
-    if (__bomb_xy[3] < __shell_xy[2]) or (__bomb_xy[2] > __shell_xy[3]) or (__bomb_xy[1] < __shell_xy[0]) or (__bomb_xy[0] > __shell_xy[1]):
-        return False
-    else:
-        return True
-
-
-img_player_cannon = pygame.image.load('data/media/images/player/cannon.png')
-img_player_turret_bg = pygame.image.load('data/media/images/player/turret_bg.png')
-img_player_turret_fg = pygame.image.load('data/media/images/player/turret_fg.png')
-img_player_char_harry = pygame.image.load('data/media/images/player/col_harry.png')
-img_player_char_george = pygame.image.load('data/media/images/player/cpt_george.png')
-img_player_char_charles = pygame.image.load('data/media/images/player/lt_charles.png')
-img_player_cross = pygame.image.load('data/media/images/player/cross.png')
-img_enemy_bomb = pygame.image.load('data/media/images/enemy/bomb.png')
-img_mm_bg = pygame.image.load('data/media/images/mm_bg.jpg')
-img_explosion = pygame.image.load('data/media/images/explosion.png')
 
 start_time = datetime.datetime.now().timestamp()
 
