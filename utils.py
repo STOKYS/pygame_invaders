@@ -60,3 +60,6 @@ img_explosion = pygame.image.load('data/media/images/explosion.png')
 img_enemy_nbomb = pygame.image.load('data/media/images/enemy/nbomba.png')
 img_enemy_bigbomb = pygame.image.load('data/media/images/enemy/big_bomb.png')
 img_mm_bg = pygame.image.load('data/media/images/mm_bg.jpg')
+
+au_explosion = pygame.mixer.Sound('data/media/audio/explosion.ogg')
+au_shot = pygame.mixer.Sound('data/media/audio/shot.ogg')

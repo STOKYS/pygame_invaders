@@ -8,6 +8,7 @@ from enemy import Bomb
 
 pygame.init()
 pygame.font.init()
+pygame.mixer.init()
 clock = pygame.time.Clock()
 pygame.display.set_caption("Invaders")
 pygame.display.set_icon(pygame.image.load('data/media/images/icon.jpg'))
@@ -16,7 +17,7 @@ from menu import Menu
 from utils import screen, FPS, fnc_write_user_data, f_fifty, SCREEN_WIDTH, SCREEN_HEIGHT, f_forty, img_player_turret_bg, \
     img_player_char_charles, img_player_char_george, img_player_turret_fg, img_player_char_harry, img_explosion, \
     img_enemy_nbomb, img_enemy_bigbomb, img_enemy_bomb, fnc_collision, f_twenty, f_thirty, img_player_cross, \
-    fnc_read_user_data, img_player_cannon
+    fnc_read_user_data, img_player_cannon, au_explosion, au_shot
 
 
 class App:
@@ -109,6 +110,7 @@ class Game:
                     buffer.append(j)
                     self.player.health -= self.enemies[j].damage
                     screen.blit(img_explosion, self.enemies[j].position)
+                    au_explosion.play()
                     if self.player.reload_streak > 0:
                         self.player.reload_streak -= 1
                 self.enemies[j].fnc_bomb_update()
@@ -128,6 +130,7 @@ class Game:
                     if fnc_collision(self.player.shells[i].position, self.enemies[j].position):
                         self.player.reload_streak += 1
                         screen.blit(img_explosion, self.enemies[j].position)
+                        au_explosion.play()
                         shell_buffer.append(i)
                         if self.enemies[j].health == 1:
                             bomb_buffer.append(j)
@@ -198,9 +201,9 @@ class Player:
 
     def fnc_player_shoot(self):
         if datetime.datetime.now().timestamp() >= self.reload + ((self.reload_time - (self.reload_streak * self.reload_streak_multip)) / 1000):
-            print((self.reload_time - (self.reload_streak * self.reload_streak_multip)) / 1000)
             self.reload = datetime.datetime.now().timestamp()
             self.shells.append(Shell(self.position, self.rotation, 20))
+            au_shot.play()
 
 
 class Shell:
